@@ -12,6 +12,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Main")
 
+async def wait_for_aggregator():
+    url = settings.TARGET_URL.replace("/publish", "/stats")
+    logger.info(f"Waiting for Aggregator at {url}...")
+
+    async with aiohttp.ClientSession() as session:
+        while True:
+            try:
+                async with session.get(url, timeout=2) as response:
+                    if response.status == 200:
+                        logger.info("Aggregator is UP")
+                        return
+            except Exception:
+                pass
+
+            logger.info("Aggregator not ready, retrying in 2s...")
+            await asyncio.sleep(2)
+
 async def worker(
     session,
     semaphore,
@@ -34,6 +51,8 @@ async def worker(
             )
 
 async def main():
+    await wait_for_aggregator()
+
     logger.info("Starting Publisher")
     logger.info(f"Target {settings.TOTAL_EVENTS} events | Duplicate Ratio: {settings.DUPLICATE_RATIO}%")
 
@@ -45,7 +64,7 @@ async def main():
         tasks = []
         for i in range(settings.TOTAL_EVENTS):
             task = asyncio.create_task(
-                worker(session, generator, client, i+1)
+                worker(session, semaphore, generator, client, i+1)
             )
         
         tasks.append(task)
