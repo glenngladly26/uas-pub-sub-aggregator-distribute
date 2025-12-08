@@ -1,0 +1,61 @@
+services:
+  storage:
+    image: postgres:16-alpine
+    container_name: uas_storage
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=eventdb
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d eventdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  broker:
+    image: redis:7-alpine
+    container_name: uas_broker
+    volumes:
+      - broker_data:/data
+    networks:
+      - backend_net
+
+  aggregator:
+    build: ./aggregator
+    container_name: uas_aggregator
+    depends_on:
+      storage:
+        condition: service_healthy
+      broker:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://user:pass@storage:5432/eventdb
+      - BROKER_URL=redis://broker:6379/0
+    ports:
+      - "8080:8080"
+    networks:
+      - backend_net
+  
+  publisher:
+    build: ./publisher
+    container_name: uas_publisher
+    depends_on:
+      - aggregator
+    environment:
+      - TARGET_URL=http://aggregator:8080/publish
+      - NUM_EVENTS=1000
+    networks:
+      - backend_net
+
+volumes:
+  pg_data:
+  broker_data:
+
+networks:
+  backend_net:
+    driver: bridge
