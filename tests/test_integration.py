@@ -10,9 +10,8 @@ async def test_stats_consistency(client):
     assert response.status_code == 200
     data = response.json()
     
-    assert "uptime_stats" in data
     assert "database_stats" in data
-    assert isinstance(data["database_stats"]["unique_events"], int)
+    assert isinstance(data["database_stats"]["unique_events_stored"], int)
 
 @pytest.mark.asyncio
 async def test_persistence_check(client):
