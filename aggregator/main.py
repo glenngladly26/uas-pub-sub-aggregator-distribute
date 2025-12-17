@@ -1,4 +1,5 @@
 import asyncio
+import time
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -8,12 +9,16 @@ from broker import broker
 from consumer import start_consumer, stats as consumer_stats
 from schemas import Event
 
+APP_START_TIME = 0
 api_stats = {
     "received": 0,
 }
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global APP_START_TIME
+    APP_START_TIME = time.time()
+
     await db.connect()
     broker.connect()
     
@@ -46,13 +51,25 @@ async def read_events(topic: Optional[str] = None, limit: int = 100):
 
 @app.get("/stats")
 async def read_stats():
-    db_count = await db.get_total_count()
+    total_received = api_stats["received"]
+    duplicates = consumer_stats["duplicates_dropped"]
+    unique_stored = await db.get_total_count()
+    
+    current_time = time.time()
+    uptime_seconds = current_time - APP_START_TIME
+    
+    throughput_rps = total_received / uptime_seconds if uptime_seconds > 0 else 0
+    
     return {
-        "uptime_stats" : {
-            "total_received": api_stats["received"],
-            "duplicates_dropped": consumer_stats["duplicates_dropped"],
+        "performance_metrics": {
+            "uptime_seconds": round(uptime_seconds, 2),
+            "throughput_rps": round(throughput_rps, 2),
+        },
+        "traffic_stats": {
+            "total_received_api": total_received,
+            "duplicates_dropped_consumer": duplicates,
         },
         "database_stats": {
-            "unique_events": db_count,
-        },
+            "unique_events_stored": unique_stored
+        }
     }
