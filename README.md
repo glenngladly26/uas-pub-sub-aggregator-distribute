@@ -125,3 +125,10 @@ pip install pytest pytest-asyncio httpx asyncpg
 2. **Concurrency Control**: Menggunakan level isolasi database *Read Committed* dikombinasikan dengan *Unique Constraints* untuk menangani ribuan *concurrent writes* tanpa anomali data.
 3. **Fault Tolerance**: Publisher memiliki mekanisme *wait-and-retry*. Jika Aggregator mati atau belum siap, Publisher akan menunggu dan mencoba lagi secara otomatis.
 4. **Persistensi Data**: Menggunakan Docker Volumes, sehingga data log aman dan tidak hilang meskipun kontainer dimatikan atau di-restart.
+
+---
+
+## 6. Demo Video
+```
+https://youtu.be/udPvHlAzZlE
+```
